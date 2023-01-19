@@ -2,11 +2,11 @@ import requests
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge, Lasso
+from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge, \
+    Lasso, SGDClassifier, TweedieRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from statsmodels.tsa.statespace.sarimax import SARIMAX
 from nba_api.stats.static import players
 
 
@@ -27,9 +27,9 @@ header_dict = {
 def get_playerID(name):
     all_players = players.get_players()
 
-    for i in range(len(all_players)):
-        if all_players[i]['full_name'].upper() == name.upper():
-            return all_players[i]['id']
+    for ind in range(len(all_players)):
+        if all_players[ind]['full_name'].upper() == name.upper():
+            return all_players[ind]['id']
     return ''
 
 
@@ -87,7 +87,7 @@ plt.text(max(x)+1.25, mean, t)
 
 plt.plot(x, stats_values, 'o', poly1d_fn(x), '--k')
 plt.axhline(y=mean, color="red")
-plt.show()
+# plt.show()
 
 
 print(f"\n\nProjecting predictions on over/under {projected_betting_stat} {betting_stat} for {player_name}...")
@@ -152,6 +152,26 @@ prediction = model.predict([labels])
 score = model.score(X, Y)
 print(f"\nkNN predictions: {prediction}")
 print(f"kNN Classes: {model.classes_}")
+print(f"Accuracy score: {score}")
+
+
+# Stochastic Gradient Descent
+model = make_pipeline(StandardScaler(), SGDClassifier(max_iter=1000, tol=1e-3))
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nSGD Classifier predictions: {prediction}")
+print(f"Accuracy score: {score}")
+
+
+# Generalized Linear Model (Tweedie Regressor)
+model = TweedieRegressor(power=1, alpha=0.5, link='log')
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nGLM (Tweedie Regressor) Classifier predictions: {prediction}")
+print(f"Omega coefficient for predicting under {projected_betting_stat} {betting_stat}: {model.coef_[0]:.20f}")
+print(f"Omega coefficient for predicting over {projected_betting_stat} {betting_stat}: {model.coef_[1]:.20f}")
 print(f"Accuracy score: {score}")
 
 
