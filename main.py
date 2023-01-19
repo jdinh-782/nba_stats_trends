@@ -34,13 +34,13 @@ def get_playerID(name):
 
 
 # CHANGE THIS TO ANY PLAYER'S NAME
-player_name = "Immanuel Quickley"
+player_name = "Fred VanVleet"
 
 # CHANGE THIS TO ANY PLAYER'S STATS
-betting_stat = "FG3M"
+betting_stat = "REB"
 
 # CHANGE THIS TO PROJECTED BETTING STAT
-projected_betting_stat = 1.5
+projected_betting_stat = 4.5
 
 player_id = get_playerID(player_name)
 url = f"https://stats.nba.com/stats/playergamelog?PlayerID={player_id}&Season=2022-23" \
@@ -102,7 +102,8 @@ for i in range(0, len(df)):
     X.append([i, stats_values[i]])
 
 Y = stats_values
-labels = [projected_betting_stat-0.5, projected_betting_stat+0.5]
+threshold = 0.1
+labels = [projected_betting_stat-threshold, projected_betting_stat+threshold]
 
 # Bayesian Ridge Regression
 model = BayesianRidge()
@@ -145,16 +146,6 @@ print(f"Logistic Regression Classes: {model.classes_}")
 print(f"Accuracy score: {score}")
 
 
-# K Nearest Neighbors
-model = KNeighborsClassifier(n_neighbors=3)
-model.fit(X, Y)
-prediction = model.predict([labels])
-score = model.score(X, Y)
-print(f"\nkNN predictions: {prediction}")
-print(f"kNN Classes: {model.classes_}")
-print(f"Accuracy score: {score}")
-
-
 # Stochastic Gradient Descent
 model = make_pipeline(StandardScaler(), SGDClassifier(max_iter=1000, tol=1e-3))
 model.fit(X, Y)
@@ -175,3 +166,11 @@ print(f"Omega coefficient for predicting over {projected_betting_stat} {betting_
 print(f"Accuracy score: {score}")
 
 
+# K Nearest Neighbors
+model = KNeighborsClassifier(n_neighbors=3)
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nkNN predictions: {prediction}")
+print(f"kNN Classes: {model.classes_}")
+print(f"Accuracy score: {score}")
