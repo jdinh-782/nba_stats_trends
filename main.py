@@ -2,9 +2,11 @@ import requests
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge, Lasso
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from scipy.optimize import curve_fit
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 from nba_api.stats.static import players
 
 
@@ -32,10 +34,13 @@ def get_playerID(name):
 
 
 # CHANGE THIS TO ANY PLAYER'S NAME
-player_name = "Desmond Bane"
+player_name = "Immanuel Quickley"
 
 # CHANGE THIS TO ANY PLAYER'S STATS
-betting_stat = "AST"
+betting_stat = "FG3M"
+
+# CHANGE THIS TO PROJECTED BETTING STAT
+projected_betting_stat = 1.5
 
 player_id = get_playerID(player_name)
 url = f"https://stats.nba.com/stats/playergamelog?PlayerID={player_id}&Season=2022-23" \
@@ -50,7 +55,10 @@ stats_names = json['resultSets'][0]['headers']
 game_stats = json['resultSets'][0]['rowSet']
 
 df = pd.DataFrame(game_stats, columns=stats_names)
-df = df.drop(['SEASON_ID', 'Player_ID', 'VIDEO_AVAILABLE'], axis=1)
+df = df.drop(['SEASON_ID', 'Player_ID', 'VIDEO_AVAILABLE', "Game_ID", "GAME_DATE"], axis=1)
+df.loc[df['WL'] == 'L', 'WL'] = 0  # 0 for loss
+df.loc[df['WL'] == 'W', 'WL'] = 1  # 1 for win
+df['OVER_UNDER'] = df[betting_stat].gt(projected_betting_stat).astype(int)
 print(df.to_string())
 
 
@@ -82,43 +90,68 @@ plt.axhline(y=mean, color="red")
 plt.show()
 
 
-print(f"\n\n{betting_stat} average for {player_name}: {mean}")
-print(f"{betting_stat} poly_1d prediction for {player_name}: {poly1d_prediction}")
+print(f"\n\nProjecting predictions on over/under {projected_betting_stat} {betting_stat} for {player_name}...")
+print(f"{betting_stat} average: {mean}")
+print(f"{betting_stat} poly_1d prediction: {poly1d_prediction}")
 # print(f"\n{betting_stat} per game for {player_name}: {stats_values}")
-x = x.reshape(-1, 1)
 
 
-# work on hyperparameter tuning
-model = LinearRegression().fit(x, stats_values)
-predictions = model.predict(x)
-# print(f"\nMinimal Predictions on {betting_stat} for {player_name}: {predictions}")
+# Begin Predictive Modeling (work on hyperparameter tuning)
+X = []
+for i in range(0, len(df)):
+    X.append([i, stats_values[i]])
+
+Y = stats_values
+labels = [projected_betting_stat-0.5, projected_betting_stat+0.5]
+
+# Bayesian Ridge Regression
+model = BayesianRidge()
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nBayesian Ridge Regression prediction: {prediction}")
+print(f"Omega coefficient for predicting under {projected_betting_stat} {betting_stat}: {model.coef_[0]:.20f}")
+print(f"Omega coefficient for predicting over {projected_betting_stat} {betting_stat}: {model.coef_[1]:.20f}")
+print(f"Accuracy score: {score}")
 
 
-d = {f"Actual {betting_stat}": stats_values, f"Predicted {betting_stat}": predictions}
-df = pd.DataFrame(d)
-print('\n', df.to_string())
+# Linear Regression
+model = LinearRegression()
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nLinear Regression predictions: {prediction}")
+print(f"Omega coefficient for predicting under {projected_betting_stat} {betting_stat}: {model.coef_[0]:.20f}")
+print(f"Omega coefficient for predicting over {projected_betting_stat} {betting_stat}: {model.coef_[1]:.20f}")
+print(f"Accuracy score: {score}")
 
 
+# Lasso
+model = Lasso(alpha=0.1)
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nLasso predictions: {prediction}")
+print(f"Accuracy score: {score}")
 
 
+# Logistic Regression
+model = LogisticRegression(penalty="l2", solver="liblinear")
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nLogistic Regression predictions: {prediction}")
+print(f"Logistic Regression Classes: {model.classes_}")
+print(f"Accuracy score: {score}")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# K Nearest Neighbors
+model = KNeighborsClassifier(n_neighbors=3)
+model.fit(X, Y)
+prediction = model.predict([labels])
+score = model.score(X, Y)
+print(f"\nkNN predictions: {prediction}")
+print(f"kNN Classes: {model.classes_}")
+print(f"Accuracy score: {score}")
 
 
