@@ -106,6 +106,16 @@ x = np.arange(0, len(stats_values))
 y = np.arange(0, max(stats_values)+1)
 mean = np.average(stats_values)
 
+window = 3
+average_y = []
+y = stats_values
+
+for ind in range(len(y) - window + 1):
+    average_y.append(np.mean(y[ind:ind+window]))
+
+for ind in range(window - 1):
+    average_y.insert(0, np.nan)
+
 
 plt.rcParams["figure.figsize"] = [15, 10]
 plt.xlabel('Game Number (Index)')
@@ -116,16 +126,13 @@ plt.yticks(y)
 
 coef = np.polyfit(x, stats_values, 1)
 poly1d_fn = np.poly1d(coef)
-
 poly1d_prediction = poly1d_fn(max(x)+1)
-t = f"Projected: {round(poly1d_prediction, 2)}"
-plt.text(max(x)+0.5, poly1d_prediction, t)
 
-t = f"Average: {round(mean, 2)}"
-plt.text(max(x)+1.25, mean, t)
-
-plt.plot(x, stats_values, 'o', poly1d_fn(x), '--k')
-plt.axhline(y=mean, color="red")
+plt.plot(x, stats_values, 'o', label="Actual Stats")
+plt.plot(x, average_y, 'r.-', label='Running average')
+plt.axhline(y=mean, color="green", label=f"Average: {round(mean, 2)}")
+plt.plot(poly1d_fn(x), '--k', label=f"Projected: {round(poly1d_prediction, 2)}")
+plt.legend()
 plt.show()
 
 
